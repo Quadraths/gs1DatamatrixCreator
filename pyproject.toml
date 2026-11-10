@@ -2,6 +2,21 @@
 name = "gs1-datamatrix-creator"
 version = "0.1.0"
 description = "Генерация GS1 Data Matrix (ECC 200) по коду маркировки «Честный знак»"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "gs1DatamatrixCreator contributors" }]
+keywords = ["gs1", "datamatrix", "ecc200", "честный знак", "км", "barcode"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Multimedia :: Graphics",
+]
 requires-python = ">=3.12"
 dependencies = [
     "pillow>=13.0.0",
