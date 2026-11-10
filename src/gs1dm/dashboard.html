@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GS1 Data Matrix — дашборд API</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --panel2: #1d2638; --line: #2c3852;
+    --text: #dbe3f4; --muted: #8ea0c4; --accent: #4f8cff; --ok: #35c46f;
+    --err: #ff5d6c; --warn: #ffb84f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  #health { margin-left: auto; font-size: 12px; padding: 4px 12px; border-radius: 20px;
+    border: 1px solid var(--line); color: var(--muted); }
+  #health.ok { color: var(--ok); border-color: var(--ok); }
+  #health.bad { color: var(--err); border-color: var(--err); }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 18px; padding: 18px 24px; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin-bottom: 18px;
+  }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 0 0 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  textarea, input[type=text], input[type=number] {
+    width: 100%; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+    font: inherit; outline: none;
+  }
+  textarea { min-height: 70px; resize: vertical; }
+  textarea:focus, input:focus { border-color: var(--accent); }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .checks { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+  .checks label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); }
+  .btns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+    padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: default; }
+  .linkish { background: none; border: none; color: var(--accent); cursor: pointer;
+    padding: 0; font: inherit; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td { padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { color: var(--muted); white-space: nowrap; width: 1%; }
+  .mono { font-family: Consolas, monospace; font-size: 12px; word-break: break-all; }
+  .preview { background: #fff; border-radius: 8px; padding: 12px; display: inline-block;
+    max-width: 100%; }
+  .preview img, .preview svg { display: block; max-width: 100%; height: auto; image-rendering: pixelated; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge.ok { background: rgba(53,196,111,.15); color: var(--ok); }
+  .badge.err { background: rgba(255,93,108,.15); color: var(--err); }
+  .badge.warn { background: rgba(255,184,79,.15); color: var(--warn); }
+  ul.errors, ul.warnings { margin: 6px 0 0; padding-left: 20px; }
+  ul.errors li { color: var(--err); }
+  ul.warnings li { color: var(--warn); }
+  pre.json {
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: 300px; font-size: 12px;
+  }
+  .muted { color: var(--muted); font-size: 12px; }
+  .hidden { display: none; }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted);
+    border-top-color: var(--accent); border-radius: 50%; animation: r 1s linear infinite;
+    vertical-align: -2px; margin-right: 6px; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  a.dl { color: var(--accent); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GS1 Data Matrix</h1>
+  <span class="sub">дашборд тестирования API · <span class="linkish" onclick="location='/docs'">/docs</span></span>
+  <span id="health">проверка…</span>
+</header>
+<main>
+  <!-- ======================= ЛЕВАЯ КОЛОНКА: ЗАПРОС ======================= -->
+  <div>
+    <div class="card">
+      <h2>Код маркировки</h2>
+      <label for="code">Готовая строка КМ (приоритет над полями ниже)</label>
+      <textarea id="code" placeholder="(01)04640711961304(21)5;I)DmC:IDt*L(91)EE12(92)4a8Gsy…"></textarea>
+      <div class="row">
+        <div><label for="gtin">GTIN-14 (AI 01)</label><input id="gtin" type="text"></div>
+        <div><label for="serial">Серийник (AI 21)</label><input id="serial" type="text"></div>
+      </div>
+      <div class="row">
+        <div><label for="ai91">AI 91 (4 симв.)</label><input id="ai91" type="text"></div>
+        <div><label for="ai93">AI 93 (4 симв.)</label><input id="ai93" type="text"></div>
+      </div>
+      <label for="ai92">AI 92 (base64, 44/88 симв.)</label>
+      <input id="ai92" type="text">
+      <div class="checks">
+        <label><input type="checkbox" id="allow_missing_crypto"> без крипточасти</label>
+        <label><input type="checkbox" id="allow_rectangular"> прямоугольные</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Параметры рендера</h2>
+      <div class="row">
+        <div><label for="scale">scale, px/модуль</label><input id="scale" type="number" value="10" min="1" max="100"></div>
+        <div><label for="quiet_zone">quiet zone, модулей</label><input id="quiet_zone" type="number" value="2" min="0" max="20"></div>
+        <div><label for="dpi">DPI</label><input id="dpi" type="number" value="300" min="72" max="2400"></div>
+      </div>
+      <div class="btns">
+        <button id="b_create" onclick="doCreate()">POST /api/create</button>
+        <button class="secondary" onclick="doValidate()">POST /api/validate</button>
+        <button class="secondary" onclick="doPng()">PNG</button>
+        <button class="secondary" onclick="doSvg()">SVG</button>
+        <button class="secondary" onclick="fillSample()">пример</button>
+      </div>
+      <div id="status" class="muted" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- ======================= ПРАВАЯ КОЛОНКА: ОТВЕТЫ ======================= -->
+  <div>
+    <div class="card" id="card_result">
+      <h2>Результат /api/create</h2>
+      <div id="create_empty" class="muted">Нажмите «POST /api/create», заполнив форму слева.</div>
+      <div id="create_body" class="hidden">
+        <div class="grid2">
+          <div>
+            <table id="create_table"></table>
+            <div id="create_warnings"></div>
+          </div>
+          <div style="text-align:center">
+            <div class="preview" id="png_preview"></div>
+            <div style="margin-top:8px">
+              <a class="dl" id="dl_png" download="gs1dm.png">скачать PNG</a> ·
+              <a class="dl" id="dl_svg" download="gs1dm.svg">скачать SVG</a>
+            </div>
+            <div class="preview hidden" id="svg_preview" style="margin-top:10px"></div>
+          </div>
+        </div>
+        <details style="margin-top:12px"><summary class="muted">полный JSON-ответ</summary>
+          <pre class="json" id="create_json"></pre>
+        </details>
+      </div>
+    </div>
+
+    <div class="card" id="card_validate">
+      <h2>Результат /api/validate</h2>
+      <div id="validate_empty" class="muted">Нажмите «POST /api/validate» для проверки строки без генерации.</div>
+      <div id="validate_body" class="hidden">
+        <span id="validate_badge" class="badge"></span>
+        <div id="validate_details"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Журнал запросов</h2>
+      <div id="log" class="muted">— пусто —</div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const GS = "\u001d";
+const showGs = (s) => (s || "").replaceAll(GS, "\u2400<GS>");
+
+function payload() {
+  const p = {
+    scale: +$("scale").value || 10,
+    quiet_zone: +$("quiet_zone").value,
+    dpi: +$("dpi").value || 300,
+    allow_missing_crypto: $("allow_missing_crypto").checked,
+    allow_rectangular: $("allow_rectangular").checked,
+  };
+  const code = $("code").value.trim();
+  if (code) { p.code = code; return p; }
+  if ($("gtin").value.trim()) p.gtin = $("gtin").value.trim();
+  if ($("serial").value.trim()) p.serial = $("serial").value.trim();
+  if ($("ai91").value.trim()) p.ai91 = $("ai91").value.trim();
+  if ($("ai92").value.trim()) p.ai92 = $("ai92").value.trim();
+  if ($("ai93").value.trim()) p.ai93 = $("ai93").value.trim();
+  return p;
+}
+
+async function call(path) {
+  const t0 = performance.now();
+  let res, data;
+  try {
+    res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload()),
+    });
+    if (path === "/api/png") data = await res.blob();
+    else if (path === "/api/svg") data = await res.text();
+    else data = await res.json();
+  } catch (e) {
+    logLine(path, "СЕТЬ/СЕРВЕР: " + e.message, false);
+    status("Ошибка запроса: " + e.message, true);
+    throw e;
+  }
+  const ms = Math.round(performance.now() - t0);
+  logLine(path, res.status + " · " + ms + " мс", res.ok);
+  status(path + " → HTTP " + res.status + " (" + ms + " мс)", res.ok);
+  return { res, data, ms };
+}
+
+function status(text, ok) {
+  $("status").textContent = text;
+  $("status").style.color = ok === false ? "var(--err)" : "var(--muted)";
+}
+
+function logLine(path, note, ok) {
+  if ($("log").textContent === "— пусто —") $("log").textContent = "";
+  const div = document.createElement("div");
+  const time = new Date().toLocaleTimeString();
+  div.innerHTML =
+    '<span class="badge ' + (ok ? "ok" : "err") + '">' + time + "</span> <span class='mono'>" +
+    path + "</span> — " + note;
+  $("log").prepend(div);
+}
+
+async function doCreate() {
+  $("b_create").disabled = true;
+  try {
+    const { res, data } = await call("/api/create");
+    if (!res.ok) { showCreateError(data); return; }
+    renderCreate(data);
+  } finally { $("b_create").disabled = false; }
+}
+
+function showCreateError(data) {
+  $("create_empty").classList.remove("hidden");
+  $("create_body").classList.add("hidden");
+  const errs = (data && data.detail && data.detail.errors) || [JSON.stringify(data)];
+  $("create_empty").innerHTML =
+    '<span class="badge err">422</span><ul class="errors">' +
+    errs.map((e) => "<li>" + e + "</li>").join("") + "</ul>";
+}
+
+function renderCreate(d) {
+  $("create_empty").classList.add("hidden");
+  $("create_body").classList.remove("hidden");
+  const rows = [
+    ["GTIN (01)", d.gtin],
+    ["Серийник (21)", d.serial],
+    ["AI 91", d.ai91], ["AI 92", d.ai92], ["AI 93", d.ai93],
+    ["Структура", d.structure],
+    ["Символ", d.symbol + " · данные " + d.codewords_used + "/" + d.data_capacity +
+      " cw + ECC " + d.error_codewords],
+    ["Элементная строка", '<span class="mono">' + showGs(d.element_string) + "</span>"],
+  ];
+  $("create_table").innerHTML = rows
+    .filter(([, v]) => v !== null && v !== undefined)
+    .map(([k, v]) => "<tr><td>" + k + "</td><td>" + v + "</td></tr>").join("");
+  $("create_warnings").innerHTML = d.warnings && d.warnings.length
+    ? '<ul class="warnings">' + d.warnings.map((w) => "<li>" + w + "</li>").join("") + "</ul>"
+    : "";
+  $("create_json").textContent = JSON.stringify(
+    { ...d, png_base64: "<" + d.png_base64.length + " base64 симв.>", svg: "<svg опущен>" },
+    null, 2);
+  const pngBlob = base64ToBlob(d.png_base64, "image/png");
+  $("png_preview").innerHTML = "";
+  $("png_preview").append(Object.assign(document.createElement("img"),
+    { src: URL.createObjectURL(pngBlob), alt: "PNG" }));
+  const svgUrl = URL.createObjectURL(new Blob([d.svg], { type: "image/svg+xml" }));
+  $("dl_png").href = URL.createObjectURL(pngBlob);
+  $("dl_svg").href = svgUrl;
+}
+
+function base64ToBlob(b64, type) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type });
+}
+
+async function doValidate() {
+  const { res, data } = await call("/api/validate");
+  $("validate_empty").classList.add("hidden");
+  $("validate_body").classList.remove("hidden");
+  const badge = $("validate_badge");
+  badge.className = "badge " + (data.valid ? "ok" : "err");
+  badge.textContent = data.valid ? "валиден" : "ошибки: " + data.errors.length;
+  let html = "";
+  if (data.valid) {
+    html = "<table>" +
+      [["GTIN", data.gtin], ["Серийник", data.serial], ["Структура", data.structure]]
+        .filter(([, v]) => v).map(([k, v]) => "<tr><td>" + k + "</td><td>" + v + "</td></tr>").join("") +
+      "</table>";
+    if (data.warnings && data.warnings.length)
+      html += '<ul class="warnings">' + data.warnings.map((w) => "<li>" + w + "</li>").join("") + "</ul>";
+  } else {
+    html = '<ul class="errors">' + data.errors.map((e) => "<li>" + e + "</li>").join("") + "</ul>";
+  }
+  $("validate_details").innerHTML = html;
+}
+
+async function doPng() {
+  const { res, data } = await call("/api/png");
+  if (!res.ok) return;
+  const url = URL.createObjectURL(data);
+  $("create_empty").classList.add("hidden");
+  $("create_body").classList.remove("hidden");
+  $("png_preview").innerHTML = "";
+  $("png_preview").append(Object.assign(document.createElement("img"),
+    { src: url, alt: "PNG" }));
+  $("dl_png").href = url;
+  status("/api/png → HTTP " + res.status + ", " + data.size + " байт", true);
+}
+
+async function doSvg() {
+  const { res, data } = await call("/api/svg");
+  if (!res.ok) return;
+  $("create_empty").classList.add("hidden");
+  $("create_body").classList.remove("hidden");
+  const prev = $("svg_preview");
+  prev.classList.remove("hidden");
+  prev.innerHTML = data.replace("<svg ", '<svg style="max-width:100%" ');
+  $("dl_svg").href = URL.createObjectURL(new Blob([data], { type: "image/svg+xml" }));
+  status("/api/svg → HTTP " + res.status + ", " + data.length + " симв.", true);
+}
+
+function fillSample() {
+  $("code").value =
+    "(01)04640711961304(21)5;I)DmC:IDt*L" +
+    "(91)EE12(92)4a8GsyItTVweCsj65+Wk5AxvQD6NnNAcmMIKSsLGAek=";
+  $("code").focus();
+}
+
+async function pingHealth() {
+  const el = $("health");
+  try {
+    const r = await fetch("/health");
+    const j = await r.json();
+    el.textContent = (j && j.status === "ok" ? "API: ok" : "API: " + JSON.stringify(j));
+    el.className = j && j.status === "ok" ? "ok" : "bad";
+  } catch {
+    el.textContent = "API: недоступен";
+    el.className = "bad";
+  }
+}
+pingHealth();
+</script>
+</body>
+</html>

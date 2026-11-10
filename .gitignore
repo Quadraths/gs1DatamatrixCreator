@@ -1,0 +1,14 @@
+out/
+.uv-cache/
+.uv-tools/
+.uv-bin/
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.env
+
+# Артефакты сборки
+dist/
+build/
+*.egg-info/

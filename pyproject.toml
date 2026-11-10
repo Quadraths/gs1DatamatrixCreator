@@ -1,0 +1,47 @@
+[project]
+name = "gs1-datamatrix-creator"
+version = "0.1.0"
+description = "Генерация GS1 Data Matrix (ECC 200) по коду маркировки «Честный знак»"
+requires-python = ">=3.12"
+dependencies = [
+    "pillow>=13.0.0",
+]
+
+[project.scripts]
+gs1dm = "gs1dm.cli:main"
+gs1dm-web = "gs1dm.web:main"
+
+[project.optional-dependencies]
+dev = [
+    "zxing-cpp>=3.1.1",
+]
+web = [
+    "fastapi>=0.120.0",
+    "uvicorn>=0.40.0",
+    "httpx>=0.28.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gs1dm"]
+
+[dependency-groups]
+dev = [
+    "zxing-cpp>=3.1.1",
+    "fastapi>=0.120.0",
+    "uvicorn>=0.40.0",
+    "httpx>=0.28.0",
+]
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]
