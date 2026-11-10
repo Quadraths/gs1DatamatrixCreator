@@ -1,4 +1,5 @@
 out/
+tests/out/
 .uv-cache/
 .uv-tools/
 .uv-bin/
@@ -12,3 +13,4 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+HANDOVER.md
